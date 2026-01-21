@@ -1,0 +1,363 @@
+---
+title: "PoC Portable Study Dashboard"
+author: "Giovanni Bader"
+format: dashboard
+server: shiny
+
+---
+
+```{r}
+#| context: setup
+
+library(random.cdisc.data)
+
+library(plotly)
+library(dplyr)
+library(crosstalk)
+library(sf)
+library(shiny)
+
+
+adsl_0 <- radsl(seed = 1)
+adlb_0 <- radlb(adsl_0, seed = 1)
+adrs_0 <- radrs(adsl_0, seed = 1)
+
+
+adsl <- select(adsl_0, USUBJID, COUNTRY, AGE, SEX, ETHNIC, ARM)
+
+adsl$iso3_code <- adsl$COUNTRY
+
+
+
+adlb <- select(adlb_0, USUBJID, ARM, AVISIT, AVISITN, PARAM, PARAMCD, AVAL, AVALU, COUNTRY)
+
+adlb$COUNTRY<- as.character(adlb$COUNTRY)
+
+country_choices <- c("All", sort(unique(adlb$COUNTRY)))
+
+adsl <- adsl %>%
+  group_by(COUNTRY) %>%
+  summarise(mean_age = mean(AGE,na.rm = TRUE), tot = n(), SexRatio = mean(SEX == "F"))
+
+adsl$mean_age <- round(adsl$mean_age, 1)
+adsl$SexRatio <- round(adsl$SexRatio, 2)
+
+adsl$iso3_code <- adsl$COUNTRY
+
+###############################################
+world_sf_0 <- read_sf("C:/Users/giova/OneDrive/Desktop/statistics/city_map_for_map/world_countries/world-administrative-boundaries-countries.geojson")
+world_sf <- select (world_sf_0, iso3_code, preferred_term)
+
+
+adsl <- adsl %>%
+  left_join(world_sf, by = "iso3_code")
+
+
+
+
+
+##################################################
+
+
+
+
+
+# Create SharedData object for linked brushing
+sd <- SharedData$new(adsl, key = ~iso3_code, group = "country_select")
+
+# Create world map
+map_plot <- plot_geo(sd, locationmode = 'ISO-3') %>%
+  add_trace(
+    locations = ~iso3_code,
+    z = ~tot,
+    text = ~paste(iso3_code, "<br>Count:", tot),
+    hoverinfo = "text",
+    color = ~tot,
+    colors = "Blues",
+    marker = list(line = list(color = 'rgb(255,255,255)', width = 1))
+  ) %>%
+  layout(
+    title = "Click on a country to highlight",
+    geo = list(
+      showframe = FALSE,
+      showcoastlines = TRUE,
+      projection = list(type = 'natural earth')
+    )
+  ) %>%
+  highlight(
+    on = "plotly_click",
+    off = "plotly_doubleclick",
+    color = "yellow",
+    opacityDim = 0.3
+  )
+
+# Create bar chart
+bar_plot_1 <- plot_ly(sd, x = ~iso3_code, y = ~tot, type = 'bar',
+                    marker = list(color = 'steelblue'),
+                    text = ~tot,
+                    hoverinfo = "text",
+                    hovertext = ~paste(iso3_code, "<br>Number of Patients:", tot)) %>%
+  layout(
+    title = " ",
+    xaxis = list(title = "Country", tickangle = -45),
+    yaxis = list(title = "Count of Subjects"),
+    margin = list(b = 100)
+  ) %>%
+  highlight(
+    on = "plotly_click",
+    off = "plotly_doubleclick",
+    color = "yellow",
+    opacityDim = 0.3
+  )
+
+bar_plot_2 <- plot_ly(sd, x = ~iso3_code, y = ~mean_age, type = 'bar',
+                      marker = list(color = 'green'),
+                      text = ~mean_age,
+                      hoverinfo = "text",
+                      hovertext = ~paste(iso3_code, "<br>Age (mean):", mean_age)) %>%
+  layout(
+    title = " ",
+    xaxis = list(title = "Country", tickangle = -45),
+    yaxis = list(title = "age (years)"),
+    margin = list(b = 100)
+  ) %>%
+  highlight(
+    on = "plotly_click",
+    off = "plotly_doubleclick",
+    color = "yellow",
+    opacityDim = 0.3
+  )
+
+bar_plot_3 <- plot_ly(sd, x = ~iso3_code, y = ~SexRatio, type = 'bar',
+                      marker = list(color = 'pink'),
+                      text = ~SexRatio,
+                      hoverinfo = "text",
+                      hovertext = ~paste(iso3_code, "<br>Proportion Female:", SexRatio)) %>%
+  layout(
+    title = " ",
+    xaxis = list(title = "Country", tickangle = -45),
+    yaxis = list(title = "Female (%)"),
+    margin = list(b = 100)
+  ) %>%
+  highlight(
+    on = "plotly_click",
+    off = "plotly_doubleclick",
+    color = "yellow",
+    opacityDim = 0.3
+  )
+
+
+# Display both plots
+
+
+
+
+```
+
+# Intro
+ULTRA SHORT SYNOPSIS
+
+Title: Clinical study to test the efficacy of Eudaimonex on optimism
+
+BACKGROUND
+
+Persistent low optimism is linked to diminished resilience, poorer treatment adherence, and increased healthcare utilization in chronic disease populations.
+Current pharmacologic options primarily target mood disorders; no approved agents directly enhance dispositional optimism.
+Eudaimonex (pro-modoria hydrochloride) is a first-in-class neuropeptide-enhancer that amplifies reward-anticipation signaling via selective σ2-receptor modulation. Pre-clinical models showed ↑ ventral striatal dopamine (27 %) without anxiogenic effects.
+OBJECTIVE
+Evaluate the efficacy and safety of Eudaimonex 50 mg once daily for improving optimism in adults with sub-clinical pessimism.
+
+END POINTS
+Primary
+Change from baseline to Week 8 in Life Orientation Test-Revised (LOT-R) total score.
+
+RESULTS (N = 240; randomized 1:1)
+
+Primary end point
+– Week 8 ΔLOT-R: +6.2 ± 3.4 vs +1.8 ± 3.0; LS-mean difference +4.4 (95 % CI 3.6–5.2; p<0.0001).
+
+CONCLUSION
+Eudaimonex demonstrated clinically meaningful, statistically significant gains in optimism and positive affect over 8 weeks with a favorable tolerability profile. Findings support larger, longer studies to confirm durability and to explore downstream benefits on adherence and health-related quality of life.
+
+Discalimer: synopsis totally invented with SobiGPT and random CDISC data generated with the R library:random.cdisc.data)
+
+# Demography
+
+```{r}
+
+subplot(
+  map_plot,
+  bar_plot_1,
+  bar_plot_2,
+  bar_plot_3,
+  nrows = 2,
+  heights = c(0.5, 0.5),
+  shareX = FALSE,
+  shareY = FALSE,
+  titleY = TRUE
+) %>%
+  layout(showlegend = FALSE)
+
+
+```
+
+# Laboratory data
+
+## {.sidebar}
+
+```{r}
+
+selectInput(
+  "country_select",
+  "Select Country:",
+  choices = country_choices,
+  selected = "All"
+)
+
+selectInput(
+  "param_select",
+  "Select Parameter:",
+  choices = unique(adlb$PARAM),
+  selected = unique(adlb$PARAM)[1]
+)
+```
+
+
+## column
+
+###
+
+```{r}
+#| title: "Laboratory Parameter by Visit"
+plotOutput("line_plot")
+```
+
+### Row {height=40%}
+
+```{r}
+#| title: "Summary Statistics"
+tableOutput("summary_table")
+
+```
+
+
+
+# Efficacy
+
+```{r}
+
+
+```
+
+
+
+```{r}
+#| context: server
+
+filtered_data <- reactive({
+  req(input$country_select, input$param_select)
+  
+  data <- adlb %>%
+    filter(PARAM == input$param_select)
+  
+  if (input$country_select != "All") {
+    data <- data %>%
+      filter(COUNTRY == input$country_select)
+  }
+  
+  data
+})
+
+
+# Get unit for selected parameter
+current_unit <- reactive({
+  req(filtered_data()) 
+  
+  filtered_data() %>%  
+  pull(AVALU) %>%
+    unique() %>%
+    first()
+})
+
+# Create line plot
+output$line_plot <- renderPlot({
+  req(input$param_select, input$country_select)
+  
+  data <- filtered_data()
+  req(data)
+  
+  
+  # Calculate mean and SE for each visit
+  summary_data <- data %>%
+    group_by(ARM,AVISIT, AVISITN) %>%
+    summarise(
+      mean_val = mean(AVAL, na.rm = TRUE),
+      se = sd(AVAL, na.rm = TRUE) / sqrt(n()),
+      .groups = "drop"
+    ) %>%
+    arrange(ARM, AVISITN)
+  
+  unit_val <- current_unit()
+  
+    country_label <- if (input$country_select == "All") {
+    "(All Countries)"
+  } else {
+    paste0("(", input$country_select, ")")
+  }
+  
+plot_title <- paste("Mean", input$param_select, "by Visit and Treatment", country_label)
+  y_label <- paste0(input$param_select, " (", current_unit(), ")")
+    
+  ggplot(summary_data, aes(x = reorder(AVISIT, AVISITN), y = mean_val,color = ARM, group = ARM)) +
+    geom_line(linewidth = 1) +
+    geom_point(size = 3) +
+    geom_errorbar(aes(ymin = mean_val - se, ymax = mean_val + se),
+                  width = 0.2, linewidth = 0.8) +
+labs(
+      title = plot_title,
+      x = "Visit",
+      y = y_label,
+      color = "Treatment"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      plot.title = element_text(face = "bold", size = 16),
+      panel.grid.minor = element_blank(),
+      legend.position = "bottom"
+    ) +
+    scale_color_brewer(palette = "Set1")
+})
+
+# Create summary table
+
+output$summary_table <- renderTable({
+  data <- filtered_data()
+  
+  data %>%
+    group_by(ARM, AVISIT, AVISITN) %>%
+    summarise(
+      N = n(),
+      Mean = round(mean(AVAL, na.rm = TRUE), 2),
+      SD = round(sd(AVAL, na.rm = TRUE), 2),
+      Median = round(median(AVAL, na.rm = TRUE), 2),
+      Min = round(min(AVAL, na.rm = TRUE), 2),
+      Max = round(max(AVAL, na.rm = TRUE), 2),
+      .groups = "drop"
+    ) %>%
+    arrange(ARM, AVISITN) %>%
+    select(ARM, AVISIT, N, Mean, SD, Median, Min, Max)
+})
+
+
+```
+
+
+
+
+```{r}
+
+
+```
+
+
