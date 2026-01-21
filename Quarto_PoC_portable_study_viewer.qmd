@@ -9,8 +9,9 @@ server: shiny
 ```{r}
 #| context: setup
 
-library(random.cdisc.data)
 
+library(random.cdisc.data)
+library(MASS)
 library(plotly)
 library(dplyr)
 library(crosstalk)
